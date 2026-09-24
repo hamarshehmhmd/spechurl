@@ -1,0 +1,157 @@
+openapi: 3.0.3
+info:
+  title: Edge Cases
+  version: 1.0.0
+  description: Path parameters, required headers, and a JSON body with refs.
+servers:
+  - url: https://edge.example.com/v1/
+paths:
+  /projects/{projectId}/items/{itemId}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      operationId: getItem
+      summary: Fetch one item
+      parameters:
+        - $ref: "#/components/parameters/ItemId"
+        - name: X-Request-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: 00000000-0000-0000-0000-000000000001
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: include
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [owner, tags]
+        - name: session
+          in: cookie
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /projects/{projectId}/items:
+    post:
+      operationId: createItem
+      summary: Create an item
+      parameters:
+        - $ref: "#/components/parameters/ProjectId"
+        - name: Idempotency-Key
+          in: header
+          required: true
+          example: idem-1
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemCreate"
+            examples:
+              extra:
+                value:
+                  name: Other
+              basic:
+                $ref: "#/components/examples/BasicItem"
+          text/plain:
+            schema:
+              type: string
+              example: ignored because JSON is preferred
+      responses:
+        "202":
+          description: Accepted
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+        "400":
+          description: Bad request
+  /search:
+    get:
+      operationId: searchEverything
+      summary: Only a client error is documented
+      responses:
+        "404":
+          description: Nothing here
+components:
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: "proj acme"
+    ItemId:
+      name: itemId
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 42
+  examples:
+    BasicItem:
+      summary: A typical create payload
+      value:
+        name: Widget
+        count: 2
+        active: true
+  responses:
+    NotFound:
+      description: Missing
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [message]
+            properties:
+              message:
+                type: string
+  schemas:
+    Item:
+      allOf:
+        - type: object
+          required: [id, name]
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        - type: object
+          properties:
+            tag:
+              type: string
+              example: demo
+    ItemCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        count:
+          type: integer
+          default: 1
+        active:
+          type: boolean
+        meta:
+          type: object
+          additionalProperties: true

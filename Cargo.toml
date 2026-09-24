@@ -1,0 +1,29 @@
+[package]
+name = "spechurl"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+authors = ["Mohammad Hamarsheh"]
+description = "Convert OpenAPI 3.x specs into git-friendly Hurl HTTP contract test suites"
+license = "MIT"
+repository = "https://github.com/hamarshehmhmd/spechurl"
+homepage = "https://github.com/hamarshehmhmd/spechurl"
+readme = "README.md"
+keywords = ["openapi", "hurl", "contract-testing", "cli", "api-testing"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "spechurl"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+thiserror = "1"
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"

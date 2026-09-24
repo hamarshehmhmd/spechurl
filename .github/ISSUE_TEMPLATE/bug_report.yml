@@ -1,0 +1,35 @@
+name: Bug report
+description: A spec spechurl mishandles, or a generate/check result that is wrong
+title: "bug: "
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What spechurl did, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: spec
+    attributes:
+      label: OpenAPI document
+      description: The smallest spec that reproduces the bug. Redact secrets.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The spechurl command you ran, and the full error output if there was one.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: spechurl version
+      description: Output of `spechurl --version`.
+      placeholder: 0.1.0
+    validations:
+      required: true

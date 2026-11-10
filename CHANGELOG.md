@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Rewrote the README with a Why spechurl section, an honest comparison of openapi-to-hurl, heave, Schemathesis and Dredd, a from-source install path, a tested pet-store quickstart, and a full GitHub Actions example.
+
 ## [0.1.0] - 2026-09-24
 
 ### Added

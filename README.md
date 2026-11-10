@@ -10,11 +10,25 @@ spechurl turns an OpenAPI 3.x document into a directory of [Hurl](https://hurl.d
 
 Backend teams use it when contract tests should review like code. There is no collection database and no GUI. The spec stays the source of truth, and `spechurl check` fails CI when the committed Hurl suite drifts from it.
 
+## Why spechurl?
+
+- **The spec is the source of truth.** Generated files are not edited by hand. Change the OpenAPI document, regenerate, and commit both.
+- **CI fails on drift.** `spechurl check` regenerates the suite in memory and exits non-zero if the committed directory differs, so a stale or drive-by-edited `.hurl` file cannot silently ship.
+- **Reviewable plain text.** One Hurl file per operation, plus a suite `README.md`. Object keys are sorted, so two runs on the same spec match byte-for-byte (aside from newline normalization).
+- **One Rust binary.** No Node or Python runtime to generate the suite. [Hurl](https://hurl.dev) is separate: install it when you want to *run* the files against an API.
+- **OpenAPI 3.0 and 3.1**, YAML or JSON, including form, text, and XML request bodies as well as JSON.
+
+spechurl does not hit your API and does not fuzz it. It writes a deterministic suite that Hurl can run later.
+
 ## Install
 
-spechurl is a single Rust binary. From a clone of this repository:
+spechurl is a single Rust binary. You need Rust 1.85 or newer (`rust-toolchain.toml` pins 1.98.1; `rustup` will pick that up). The [v0.1.0 GitHub release](https://github.com/hamarshehmhmd/spechurl/releases/tag/v0.1.0) tags the source but does not yet attach prebuilt binaries, so install from source:
+
+**From a clone**
 
 ```bash
+git clone https://github.com/hamarshehmhmd/spechurl
+cd spechurl
 cargo install --path . --locked
 spechurl --version
 ```
@@ -26,7 +40,13 @@ cargo build --release
 ./target/release/spechurl --help
 ```
 
-You need Rust 1.85 or newer (`rustup` will pick up `rust-toolchain.toml`). [Hurl](https://hurl.dev/docs/installation.html) is separate: install it when you want to *run* the generated files. spechurl only writes and compares them.
+**Without keeping a checkout**
+
+```bash
+cargo install --git https://github.com/hamarshehmhmd/spechurl --locked
+```
+
+[Hurl](https://hurl.dev/docs/installation.html) is separate: install it when you want to *run* the generated files. spechurl only writes and compares them.
 
 ## Quickstart
 
@@ -37,7 +57,7 @@ spechurl generate fixtures/petstore.yaml --out hurl
 spechurl check fixtures/petstore.yaml --dir hurl
 ```
 
-`generate` writes one `.hurl` file per operation plus `hurl/README.md`. `check` regenerates the suite in memory and exits non-zero if that directory differs. Run the tests with Hurl when you have an API to point at:
+`generate` writes one `.hurl` file per operation plus `hurl/README.md` (six files for the pet store). `check` regenerates the suite in memory and exits non-zero if that directory differs. Run the tests with Hurl when you have an API to point at:
 
 ```bash
 hurl --variable base_url=https://petstore.example.com --test hurl
@@ -131,23 +151,62 @@ Other documented success codes are listed in a comment. If the spec has no 2xx r
 
 Object keys in JSON bodies are sorted, so `check` is stable across machines.
 
+## How it compares
+
+These tools overlap in name more than in job. Pick what matches the workflow you want.
+
+| | spechurl | [openapi-to-hurl](https://github.com/ethancarlsson/openapi-to-hurl) | [heave](https://github.com/PatOConnor43/heave) | [Schemathesis](https://github.com/schemathesis/schemathesis) | [Dredd](https://github.com/apiaryio/dredd) |
+|---|---|---|---|---|---|
+| What it produces | A directory of Hurl files (one per operation) plus a suite README | Hurl on stdout, or `--out-dir` files | One Hurl file per operation *per documented response* | Does not write Hurl. Generates and runs property-based tests against a live API | Does not write Hurl. Replays documented requests against a live API |
+| Intended workflow | Do not edit the generated files; regenerate when the spec changes | A starter for tests you then edit by hand | A foundation you customize (optional MiniJinja templates) | Point it at a schema or running service and fuzz | Prove the implementation still matches the description |
+| Drift check | `spechurl check` fails CI when the committed suite does not match the spec | No | No | n/a | The live run *is* the check |
+| Response checks | Preferred success status, plus `Content-Type` when the response documents JSON (or another media type) | Optional `--validation body` JSONPath type asserts (skips nullable / union / optional properties) | Asserts derived from the response schema | Validates live responses against the schema while generating many inputs | Compares live responses to the API description |
+| Specs | OpenAPI 3.0 and 3.1 (YAML or JSON) | OpenAPI 3 (JSON or YAML); JSON and plain-text bodies | OpenAPI | OpenAPI 2.0 / 3.x, GraphQL, and gRPC | API Blueprint, OpenAPI 2, OpenAPI 3 (experimental) |
+| Install | Rust: `cargo install --git https://github.com/hamarshehmhmd/spechurl --locked` (no prebuilt binaries yet) | Rust: `cargo install openapi-to-hurl` (Homebrew binaries are macOS-only) | Rust | Python | `npm install -g dredd` |
+
+**openapi-to-hurl** and **heave** are the closest Hurl generators. Both are Rust tools that turn an OpenAPI document into `.hurl` files. Their authors describe the output as a starting point you edit afterwards; heave can also emit one file per documented response and lets you replace the template. spechurl takes the opposite default: the files are generated artifacts, and `check` exists so they stay in lockstep with the spec. spechurl does not yet emit JSONPath body asserts or per-status files; those remain generated-comment notes or later work.
+
+**Schemathesis** is complementary, not a substitute. It [generates property-based tests from OpenAPI, GraphQL, or gRPC](https://schemathesis.readthedocs.io/en/stable/) and exercises edge cases against a running API. Use it to find bugs you would not write by hand. It does not produce a committed Hurl suite.
+
+**Dredd** checks that a live API matches its description document (API Blueprint or OpenAPI). The [`apiaryio/dredd` repository is archived](https://github.com/apiaryio/dredd) and read-only; last upstream push was May 2024. It still runs, but it is no longer maintained. OpenAPI 3 support was experimental. If you want an actively maintained schema-driven checker against a live server, Schemathesis is the safer bet.
+
+A broader option in the same neighborhood is [CaseForge](https://github.com/testmind-hq/caseforge), which can emit Hurl among other formats (k6, Postman) and optionally uses an LLM. That is a different scope from a small deterministic generator.
+
 ## CI
 
-Install spechurl in the job (or cache the release binary), then fail the build on drift:
+Install spechurl in the job, then fail the build on drift:
 
 ```yaml
-- name: Contract suite matches OpenAPI
-  run: spechurl check openapi.yaml --dir tests/hurl
+name: contract-suite
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  spechurl:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install spechurl
+        run: cargo install --git https://github.com/hamarshehmhmd/spechurl --locked --force
+      - name: Contract suite matches OpenAPI
+        run: spechurl check openapi.yaml --dir tests/hurl
 ```
 
-A typical update is:
+A typical update after the spec changes is:
 
 ```bash
 spechurl generate openapi.yaml --out tests/hurl
 git add tests/hurl openapi.yaml
 ```
 
-This repository's own workflow (`.github/workflows/ci.yml`) runs `cargo fmt`, `cargo clippy -D warnings`, `cargo test`, and a release build on push and pull request to `main`.
+This repository's own workflow (`.github/workflows/ci.yml`) runs `cargo fmt`, `cargo clippy -D warnings`, `cargo test`, and a release build on push and pull request to `main`. It does not yet publish prebuilt binaries.
 
 ## Fixtures
 
@@ -168,6 +227,7 @@ This repository's own workflow (`.github/workflows/ci.yml`) runs `cargo fmt`, `c
 - Array query parameters are sent as a single comma-joined value. `style` and `explode` are not modeled.
 - Request bodies that are not JSON, form, text, or XML need an example or they are skipped with a comment.
 - spechurl does not run your API. Hurl does that.
+- Prebuilt release binaries are not published yet. Install from source as described above.
 
 ## Development
 
@@ -177,7 +237,7 @@ cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The changelog starts at [0.1.0](CHANGELOG.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the [good first issues](https://github.com/hamarshehmhmd/spechurl/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22). The changelog starts at [0.1.0](CHANGELOG.md).
 
 ## License
 

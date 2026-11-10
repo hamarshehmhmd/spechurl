@@ -380,3 +380,50 @@ paths:
     assert!(suite.files["get_a_b.hurl"].contains("GET /a/b"));
     assert!(suite.files["get_a_b_2.hurl"].contains("GET /a_b"));
 }
+
+#[test]
+fn optional_query_and_header_with_schema_enum_are_emitted() {
+    let source = r#"
+openapi: 3.0.3
+info:
+  title: Enums
+  version: "1"
+paths:
+  /items:
+    get:
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [available, pending, sold]
+        - name: X-Filter-Mode
+          in: header
+          required: false
+          schema:
+            type: string
+            enum: [fast, thorough]
+        - name: ignored_empty
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: []
+        - name: unconfigured
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ok
+"#;
+    let suite = generate_from_str("enums.yaml", source).unwrap();
+    let get = &suite.files["get_items.hurl"];
+    assert!(get.contains("GET {{base_url}}/items\n"));
+    assert!(get.contains("X-Filter-Mode: fast\n"));
+    assert!(get.contains("[Query]\nstatus: available\n"));
+    assert!(!get.contains("ignored_empty"));
+    assert!(!get.contains("unconfigured"));
+}

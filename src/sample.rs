@@ -465,6 +465,13 @@ pub(crate) fn has_explicit_sample(
             return true;
         }
         if schema
+            .get("enum")
+            .and_then(Value::as_array)
+            .is_some_and(|items| !items.is_empty())
+        {
+            return true;
+        }
+        if schema
             .get("examples")
             .and_then(Value::as_array)
             .is_some_and(|items| !items.is_empty())

@@ -116,7 +116,7 @@ Samples are chosen in this order:
 3. A media-type example (names are sorted, so the result does not depend on YAML key order).
 4. A minimal value from the schema. Objects include `required` properties, or every property when none are required. `readOnly` properties are left out of request bodies. Cycles become `null`.
 
-Optional query and header parameters are emitted only when the spec gives an example, default, or `const`. Required ones are always emitted. Path parameters are filled from that same sample and percent-encoded into the URL.
+Optional query and header parameters are emitted only when the spec gives an example, default, `const`, or schema `enum`. Required ones are always emitted. Path parameters are filled from that same sample and percent-encoded into the URL.
 
 Status selection is fixed: `200` if it is documented, otherwise `201`, otherwise the lowest other 2xx code. A spec that only says `2XX` becomes:
 

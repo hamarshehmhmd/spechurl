@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Treat non-empty schema `enum` as an explicit sample for optional query and header parameters.
+
 ## [0.1.0] - 2026-09-24
 
 ### Added
